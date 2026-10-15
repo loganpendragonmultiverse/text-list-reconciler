@@ -26,8 +26,14 @@ footer { border-top:1px solid var(--line);padding:2rem 1rem;text-align:center;co
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
 
 .input-format { display: flex; align-items: center; flex-wrap: wrap; gap: .6rem; margin: .8rem 0; }
-select { max-width: 100%; padding: .55rem; font: inherit; color: inherit; background: var(--surface, #fff); border: 1px solid #bbc7c1; border-radius: .4rem; }
-dialog { width: min(42rem, calc(100% - 2rem)); max-height: calc(100vh - 2rem); overflow: auto; padding: 1.5rem; color: #17201d; background: #fff; border: 1px solid #bbc7c1; border-radius: 1rem; }
+select { max-width: 100%; padding: .55rem; font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--line); border-radius: .4rem; }
+dialog { width: min(42rem, calc(100% - 2rem)); max-height: calc(100vh - 2rem); overflow: auto; padding: 1.5rem; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 1rem; }
 dialog::backdrop { background: #17201daa; }
 dialog td { white-space: pre-wrap; overflow-wrap: anywhere; }
 #import-status { overflow-wrap: anywhere; }
+
+dialog table { min-width: 0; table-layout: fixed; }
+dialog th:first-child, dialog td:first-child { width: 6rem; }
+dialog label { display: block; margin: .8rem 0 .4rem; }
+dialog select { display: block; width: 100%; }
+#csv-filename { overflow-wrap: anywhere; }

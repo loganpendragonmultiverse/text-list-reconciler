@@ -81,12 +81,27 @@ try {
   await openImport("a", Buffer.from("a,b\nc,d\n")); await waitDialog();
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true);
+  const appearance = await page.evaluate(() => {
+    const dialog = document.querySelector("#csv-import"), cell = document.querySelector("#csv-preview td:last-child");
+    function luminance(color) {
+      const values = color.match(/[\d.]+/g).slice(0, 3).map(Number).map(x => x / 255).map(x => x <= .04045 ? x / 12.92 : ((x + .055) / 1.055) ** 2.4);
+      return values[0] * .2126 + values[1] * .7152 + values[2] * .0722;
+    }
+    function contrast(foreground, background) { const a = luminance(foreground), b = luminance(background); return (Math.max(a, b) + .05) / (Math.min(a, b) + .05); }
+    const modal = getComputedStyle(dialog), select = getComputedStyle(document.querySelector("#mode-a"));
+    return { cellInsideDialog: cell.getBoundingClientRect().right <= dialog.getBoundingClientRect().right - 10,
+      selectContrast: contrast(select.color, select.backgroundColor),
+      cellContrast: contrast(getComputedStyle(cell).color, modal.backgroundColor),
+      cancelContrast: contrast(getComputedStyle(document.querySelector("#csv-cancel")).color, modal.backgroundColor) };
+  });
+  assert.equal(appearance.cellInsideDialog, true);
+  for (const value of [appearance.selectContrast, appearance.cellContrast, appearance.cancelContrast]) assert.ok(value >= 4.5);
   await page.screenshot({ path: path.join(root, ".qa/csv-preview-mobile.png"), fullPage: true });
   await page.keyboard.press("Escape");
   assert.equal(await page.evaluate(() => localStorage.length + sessionStorage.length), 0);
   assert.equal((await context.cookies()).length, 0);
   assert.deepEqual(errors, []); assert.deepEqual(remote, []);
-  const result = { status: "passed", checks: ["keyboard selection and Escape cancellation", "duplicate and blank header positions", "multiline cell comparison", "safe DOM preview/results", "CSV download", "both list panels", "malformed/oversized source preservation", "changed-list refusal", "mobile width", "no external requests/storage/cookies"], errors, remote };
+  const result = { status: "passed", checks: ["keyboard selection and Escape cancellation", "duplicate and blank header positions", "multiline cell comparison", "safe DOM preview/results", "CSV download", "both list panels", "malformed/oversized source preservation", "changed-list refusal", "mobile width and visible preview column", "control/table contrast", "no external requests/storage/cookies"], errors, remote };
   await writeFile(path.join(root, ".qa/BROWSER-VERIFICATION.json"), JSON.stringify(result, null, 2));
   console.log(JSON.stringify(result));
 } finally { await context.close(); await browser.close(); await new Promise(resolve => server.close(resolve)); }
