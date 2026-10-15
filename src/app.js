@@ -1,4 +1,5 @@
-import { parseList, reconcile, toCsv } from "./core.js";
+import { parseList, reconcileItems, toCsv } from "./core.js";
+import { parseCsv, columnItems, serializeColumn, readCsvList } from "./csv.js";
 
 const $ = (selector) => document.querySelector(selector);
 const elements = {
@@ -7,13 +8,24 @@ const elements = {
 };
 let current = null;
 let activeGroup = "exact";
+let pendingImport = null;
+let importSequence = 0;
+const importDialog = $("#csv-import");
+const importStatus = $("#import-status");
+$("#csv-column").addEventListener("change", renderImport);
+$("#csv-header").addEventListener("change", renderImport);
+$("#csv-apply").addEventListener("click", applyImport);
+$("#csv-cancel").addEventListener("click", () => importDialog.close());
+importDialog.addEventListener("close", () => { pendingImport = null; });
+$("#mode-a").addEventListener("change", listChanged);
+$("#mode-b").addEventListener("change", listChanged);
 
 $("#compare").addEventListener("click", compare);
 $("#reset").addEventListener("click", reset);
 $("#load-example").addEventListener("click", loadExample);
 $("#export").addEventListener("click", exportCsv);
-elements.listA.addEventListener("input", updateCounts);
-elements.listB.addEventListener("input", updateCounts);
+elements.listA.addEventListener("input", listChanged);
+elements.listB.addEventListener("input", listChanged);
 $("#file-a").addEventListener("change", (event) => importFile(event, elements.listA));
 $("#file-b").addEventListener("change", (event) => importFile(event, elements.listB));
 
@@ -29,7 +41,9 @@ function options() {
 }
 
 function compare() {
-  current = reconcile(elements.listA.value, elements.listB.value, options());
+  try { current = reconcileItems(readItems(elements.listA), readItems(elements.listB), options()); }
+  catch (error) { invalidateResults(); importStatus.textContent = error.message; return; }
+  importStatus.textContent = "";
   activeGroup = "exact";
   render();
   elements.results.hidden = false;
@@ -77,12 +91,75 @@ function row(item) {
   return tr;
 }
 
+function modeFor(textarea) { return $(textarea === elements.listA ? "#mode-a" : "#mode-b"); }
+function readItems(textarea) { return modeFor(textarea).value === "csv" ? readCsvList(textarea.value) : parseList(textarea.value); }
+function invalidateResults() { current = null; elements.results.hidden = true; }
+function listChanged() { importSequence += 1; invalidateResults(); updateCounts(); }
+function cancelImport() { importSequence += 1; if (importDialog.open) importDialog.close(); pendingImport = null; }
+
 async function importFile(event, textarea) {
-  const [file] = event.target.files;
+  const input = event.target;
+  const [file] = input.files;
   if (!file) return;
-  textarea.value = await file.text();
-  updateCounts();
-  event.target.value = "";
+  const sequence = ++importSequence;
+  const baseline = textarea.value, baselineMode = modeFor(textarea).value;
+  try {
+    if (file.size > 1048576) throw new Error("Import files must be at most 1 MiB.");
+    const text = new TextDecoder("utf-8", { fatal: true }).decode(await file.arrayBuffer());
+    if (sequence !== importSequence) return;
+    if (/\.csv$/i.test(file.name)) {
+      const rows = parseCsv(text);
+      if (!rows.length) throw new Error("The CSV file has no records.");
+      pendingImport = { rows, textarea, baseline, baselineMode, sequence };
+      $("#csv-filename").textContent = file.name;
+      $("#csv-header").checked = false;
+      $("#csv-column").value = "0";
+      renderImport();
+      if (!importDialog.open) importDialog.showModal();
+    } else {
+      textarea.value = text; modeFor(textarea).value = "lines";
+      invalidateResults(); updateCounts(); importStatus.textContent = "Text file imported locally.";
+    }
+  } catch (error) {
+    if (sequence === importSequence) importStatus.textContent = error.message;
+  } finally { input.value = ""; }
+}
+
+function renderImport() {
+  if (!pendingImport) return;
+  const { rows } = pendingImport;
+  const select = $("#csv-column"), header = $("#csv-header").checked;
+  const previous = Number(select.value) || 0;
+  select.replaceChildren(...rows[0].cells.map((value, index) => {
+    const option = document.createElement("option"); option.value = String(index);
+    option.textContent = `Column ${index + 1}${header ? ": " + (value || "(unnamed)") : ""}`;
+    return option;
+  }));
+  select.value = String(Math.min(previous, rows[0].cells.length - 1));
+  const column = Number(select.value);
+  $("#csv-preview").replaceChildren(...rows.slice(header ? 1 : 0).slice(0, 5).map(row => {
+    const tr = document.createElement("tr");
+    for (const value of [String(row.line), row.cells[column]]) {
+      const cell = document.createElement("td"); cell.textContent = value; tr.appendChild(cell);
+    }
+    return tr;
+  }));
+  const count = columnItems(rows, column, header).length;
+  $("#csv-summary").textContent = `${count} non-empty cells to import. Preview shows up to five records; quoted line breaks stay inside one item.`;
+  $("#csv-apply").disabled = count === 0;
+}
+
+function applyImport() {
+  if (!pendingImport) return;
+  const { rows, textarea, baseline, baselineMode, sequence } = pendingImport;
+  if (sequence !== importSequence || textarea.value !== baseline || modeFor(textarea).value !== baselineMode) {
+    importStatus.textContent = "The list changed during import. Choose the file again."; importDialog.close(); return;
+  }
+  const items = columnItems(rows, Number($("#csv-column").value), $("#csv-header").checked);
+  if (!items.length) return;
+  textarea.value = serializeColumn(items); modeFor(textarea).value = "csv";
+  invalidateResults(); updateCounts(); importDialog.close();
+  importStatus.textContent = `Imported ${items.length} CSV cells locally. CSV cell mode preserves quoted commas and line breaks; editing remains available.`;
 }
 
 function exportCsv() {
@@ -96,6 +173,7 @@ function exportCsv() {
 }
 
 function reset() {
+  cancelImport(); modeFor(elements.listA).value = "lines"; modeFor(elements.listB).value = "lines"; importStatus.textContent = "";
   elements.listA.value = "";
   elements.listB.value = "";
   current = null;
@@ -105,6 +183,7 @@ function reset() {
 }
 
 function loadExample() {
+  cancelImport(); modeFor(elements.listA).value = "lines"; modeFor(elements.listB).value = "lines"; invalidateResults();
   elements.listA.value = "Acme Corporation\njohn@example.com\nBetter-Proxies\nNorthwind Traders\nNorthwind Traders";
   elements.listB.value = "Acme Corporation\nJohn@example.com\nBetter Proxies\nNorthwind Trading";
   $("#ignore-punctuation").checked = true;
@@ -112,8 +191,10 @@ function loadExample() {
 }
 
 function updateCounts() {
-  elements.countA.textContent = `${parseList(elements.listA.value).length} non-empty lines`;
-  elements.countB.textContent = `${parseList(elements.listB.value).length} non-empty lines`;
+  for (const [textarea, counter] of [[elements.listA, elements.countA], [elements.listB, elements.countB]]) {
+    try { counter.textContent = `${readItems(textarea).length} non-empty ${modeFor(textarea).value === "csv" ? "CSV cells" : "lines"}`; }
+    catch (error) { counter.textContent = error.message; }
+  }
 }
 
 updateCounts();

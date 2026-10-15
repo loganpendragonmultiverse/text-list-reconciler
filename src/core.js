@@ -12,8 +12,12 @@ export function normalize(value, options = {}) {
 }
 
 export function reconcile(textA, textB, options = {}) {
-  const listA = parseList(textA).map((item, index) => ({ ...item, index, key: normalize(item.value, options) }));
-  const listB = parseList(textB).map((item, index) => ({ ...item, index, key: normalize(item.value, options) }));
+  return reconcileItems(parseList(textA), parseList(textB), options);
+}
+
+export function reconcileItems(itemsA, itemsB, options = {}) {
+  const listA = itemsA.map((item, index) => ({ ...item, index, key: normalize(item.value, options) }));
+  const listB = itemsB.map((item, index) => ({ ...item, index, key: normalize(item.value, options) }));
   const duplicatesA = duplicates(listA);
   const duplicatesB = duplicates(listB);
   const usedB = new Set();
@@ -112,10 +116,11 @@ export function toCsv(result) {
     if (!Array.isArray(items) || group.startsWith("duplicates")) continue;
     items.forEach((item) => rows.push([group, item.a, item.b, item.lineA ?? "", item.lineB ?? "", item.score]));
   }
-  return rows.map((row) => row.map(csvCell).join(",")).join("\r\n") + "\r\n";
+  return rows.map((row) => row.map(value => csvCell(value, true)).join(",")).join("\r\n") + "\r\n";
 }
 
-function csvCell(value) {
-  const text = String(value);
-  return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+export function csvCell(value, spreadsheetSafe = false) {
+  let text = String(value);
+  if (spreadsheetSafe && (/^\s*[=+@-]/.test(text) || /^[\t\r\n]/.test(text))) text = "'" + text;
+  return /^\uFEFF|[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 }
