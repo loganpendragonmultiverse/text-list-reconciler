@@ -30,7 +30,7 @@ Everything runs in the browser tab. There are no analytics, uploads, accounts, c
 
 ## Limitations
 
-- CSV import treats each physical line as an item; it does not select or parse individual CSV columns in v1.0.
+- CSV import accepts comma-separated UTF-8 records with consistent column counts. Other delimiters and automatic encoding detection are unsupported.
 - Near matches are suggestions, not accepted merges.
 - The application does not save list contents between sessions.
 - Very large lists may be slow because cautious near-match comparison examines unmatched pairs.
@@ -46,10 +46,31 @@ npm run check
 
 ## Project status
 
-**Feature complete for v1.0.** Accessibility, correctness, and import/export improvements are welcome when they preserve local-only operation.
+**Feature complete for v1.1.** Accessibility, correctness, and import/export improvements are welcome when they preserve local-only operation.
 
 Released under the [MIT License](LICENSE).
 
 ## More open-source projects
 
 This project is part of the [Logan Pendragon Forge open-source collection](https://www.loganpendragonforge.com/open-source/). Browse the catalog for other released tools, source repositories, live demos, and downloads.
+
+## CSV import (1.1.0)
+
+Import a `.csv` file to preview a column before replacing a list. Choose the column by
+position and explicitly mark whether the first record is a header. Duplicate or blank
+header labels remain separate columns. Cancel or Escape leaves the current list unchanged.
+Only non-empty selected cells are imported. Quoted commas, escaped quotes and quoted line
+breaks are supported; malformed quoting or inconsistent record widths are rejected.
+
+Imported columns use the visible **CSV cells (one column)** input format. Quoted multiline
+cells remain one comparison item and can still be edited as single-column CSV. Plain text
+keeps the existing one-item-per-line format. Source line numbers refer to the current
+editable input, not the original file after column selection/header removal.
+
+Files are limited to 1 MiB; CSV text to 1,048,576 JavaScript characters, 10,000 records,
+128 columns and 65,536 characters per field. Large comparisons can still be slow,
+especially with near-match suggestions enabled. No content is uploaded or stored.
+
+CSV report exports now prefix spreadsheet formula-like cells with an apostrophe. This
+changes only the exported report, not comparison values. Spreadsheet import behavior
+varies; inspect unfamiliar exports as text rather than treating CSV as safe executable input.

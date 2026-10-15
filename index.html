@@ -24,14 +24,18 @@
         <p>Paste two lists, choose how cautious the comparison should be, and review every exact, normalized, duplicate, missing, and possible match.</p>
       </section>
 
+      <p id="import-status" role="status" aria-live="polite"></p>
+
       <section class="workspace" aria-label="List comparison workspace">
         <div class="list-panel">
           <div class="panel-heading"><div><span class="list-letter">A</span><h2>Expected list</h2></div><label class="file-button">Import file<input id="file-a" type="file" accept=".txt,.csv,text/plain,text/csv"></label></div>
+          <label class="input-format" for="mode-a">Input format <select id="mode-a"><option value="lines">One item per line</option><option value="csv">CSV cells (one column)</option></select></label>
           <textarea id="list-a" spellcheck="false" placeholder="One item per line&#10;Acme Corporation&#10;john@example.com&#10;Better-Proxies"></textarea>
           <p class="input-count" id="count-a">0 non-empty lines</p>
         </div>
         <div class="list-panel">
           <div class="panel-heading"><div><span class="list-letter">B</span><h2>Observed list</h2></div><label class="file-button">Import file<input id="file-b" type="file" accept=".txt,.csv,text/plain,text/csv"></label></div>
+          <label class="input-format" for="mode-b">Input format <select id="mode-b"><option value="lines">One item per line</option><option value="csv">CSV cells (one column)</option></select></label>
           <textarea id="list-b" spellcheck="false" placeholder="One item per line&#10;ACME Corp.&#10;John@example.com&#10;Better Proxies"></textarea>
           <p class="input-count" id="count-b">0 non-empty lines</p>
         </div>
@@ -61,6 +65,16 @@
         <div class="result-table-wrap"><table><thead><tr><th>List A</th><th>List B</th><th>How it matched</th></tr></thead><tbody id="result-rows"></tbody></table></div>
         <div class="empty-result" id="empty-result" hidden>No items in this group.</div>
       </section>
+      <dialog id="csv-import" aria-labelledby="csv-title" aria-describedby="csv-help">
+        <h2 id="csv-title">Choose a CSV column</h2>
+        <p id="csv-filename"></p>
+        <p id="csv-help">Review the selection before replacing this list. Comma-separated UTF-8 CSV only. Cancel leaves your list unchanged.</p>
+        <label><input type="checkbox" id="csv-header"> First record is a header</label>
+        <label for="csv-column">Column to import</label><select id="csv-column"></select>
+        <p id="csv-summary"></p>
+        <div class="result-table-wrap"><table><thead><tr><th>Source line</th><th>Selected cell</th></tr></thead><tbody id="csv-preview"></tbody></table></div>
+        <div class="action-row"><button type="button" id="csv-apply" class="primary-button">Import selected column</button><button type="button" id="csv-cancel" class="quiet-button">Cancel</button></div>
+      </dialog>
     </main>
 
     <footer><p>Text List Reconciler · Open source under the MIT License · No accounts, tracking, or uploads.</p></footer>

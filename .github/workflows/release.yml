@@ -1,0 +1,21 @@
+name: Release build
+on:
+  push: { tags: ["v*"] }
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with: { node-version: 24 }
+      - run: npm test && npm run check
+      - name: Archive exact tagged source
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          node -e 'if (JSON.parse(require("fs").readFileSync("package.json")).version !== process.env.GITHUB_REF_NAME.slice(1)) process.exit(1)'
+          mkdir -p dist
+          git archive --format=zip "--prefix=text-list-reconciler-$version/" -o "dist/text-list-reconciler-$version.zip" HEAD
+      - uses: actions/upload-artifact@v7
+        with: { name: site-source, path: "dist/*.zip" }
