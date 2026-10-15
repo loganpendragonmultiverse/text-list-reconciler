@@ -122,5 +122,5 @@ export function toCsv(result) {
 export function csvCell(value, spreadsheetSafe = false) {
   let text = String(value);
   if (spreadsheetSafe && (/^\s*[=+@-]/.test(text) || /^[\t\r\n]/.test(text))) text = "'" + text;
-  return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+  return /^\uFEFF|[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 }

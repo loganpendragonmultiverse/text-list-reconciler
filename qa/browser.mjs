@@ -98,10 +98,20 @@ try {
   for (const value of [appearance.selectContrast, appearance.cellContrast, appearance.cancelContrast]) assert.ok(value >= 4.5);
   await page.screenshot({ path: path.join(root, ".qa/csv-preview-mobile.png"), fullPage: true });
   await page.keyboard.press("Escape");
+  for (const [data, column] of [['header\n"\uFEFFAlice"', "0"], ['id,name\n1,"\uFEFFAlice"', "1"]]) {
+    await openImport("a", Buffer.from(data)); await waitDialog();
+    await page.locator("#csv-header").check(); await page.locator("#csv-column").selectOption(column);
+    await page.locator("#csv-apply").click();
+    assert.equal(await page.locator("#list-a").inputValue(), '"\uFEFFAlice"');
+    await page.locator("#mode-b").selectOption("csv"); await page.locator("#list-b").fill('"\uFEFFAlice"');
+    await page.locator("#compare").click();
+    assert.equal(await page.locator("#result-rows tr").count(), 1);
+    assert.equal(await page.locator("#result-rows td").first().textContent(), "\uFEFFAlice");
+  }
   assert.equal(await page.evaluate(() => localStorage.length + sessionStorage.length), 0);
   assert.equal((await context.cookies()).length, 0);
   assert.deepEqual(errors, []); assert.deepEqual(remote, []);
-  const result = { status: "passed", checks: ["keyboard selection and Escape cancellation", "duplicate and blank header positions", "multiline cell comparison", "safe DOM preview/results", "CSV download", "both list panels", "malformed/oversized source preservation", "changed-list refusal", "mobile width and visible preview column", "control/table contrast", "no external requests/storage/cookies"], errors, remote };
+  const result = { status: "passed", checks: ["keyboard selection and Escape cancellation", "duplicate and blank header positions", "multiline cell comparison", "safe DOM preview/results", "CSV download", "both list panels", "malformed/oversized source preservation", "changed-list refusal", "mobile width and visible preview column", "control/table contrast", "U+FEFF first selected cell survives header/column import", "no external requests/storage/cookies"], errors, remote };
   await writeFile(path.join(root, ".qa/BROWSER-VERIFICATION.json"), JSON.stringify(result, null, 2));
   console.log(JSON.stringify(result));
 } finally { await context.close(); await browser.close(); await new Promise(resolve => server.close(resolve)); }

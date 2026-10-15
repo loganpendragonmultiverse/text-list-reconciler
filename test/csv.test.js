@@ -57,3 +57,21 @@ test("formula-like input stays literal in comparisons and is prefixed in report 
     assert.equal(rows[1].cells[2], "'" + value);
   }
 });
+
+
+test("first selected cell preserves U+FEFF after header removal", () => {
+  const rows = parseCsv('header\n"\uFEFFAlice"');
+  const selected = columnItems(rows, 0, true);
+  assert.equal(selected[0].value, "\uFEFFAlice");
+  const serialized = serializeColumn(selected);
+  assert.ok(serialized.startsWith('"'));
+  assert.equal(readCsvList(serialized)[0].value, "\uFEFFAlice");
+});
+
+test("nonfirst source column preserves a first-cell U+FEFF through column serialization", () => {
+  const rows = parseCsv('id,name\n1,"\uFEFFAlice"\n2,Bob');
+  const selected = columnItems(rows, 1, true);
+  const restored = readCsvList(serializeColumn(selected));
+  assert.deepEqual(restored.map(x => x.value), ["\uFEFFAlice", "Bob"]);
+  assert.equal(reconcileItems(restored, selected, { nearMatches: false }).exact.length, 2);
+});
