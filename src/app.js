@@ -20,6 +20,8 @@ importDialog.addEventListener("close", () => { pendingImport = null; });
 $("#mode-a").addEventListener("change", listChanged);
 $("#mode-b").addEventListener("change", listChanged);
 
+document.querySelectorAll(".option-grid input").forEach(input => input.addEventListener("change", invalidateResults));
+
 $("#compare").addEventListener("click", compare);
 $("#reset").addEventListener("click", reset);
 $("#load-example").addEventListener("click", loadExample);
@@ -53,12 +55,17 @@ function compare() {
 function render() {
   const groups = [
     ["exact", "Exact", current.exact.length], ["normalized", "Normalized", current.normalized.length],
-    ["possible", "Possible", current.possible.length], ["onlyA", "Only in A", current.onlyA.length], ["onlyB", "Only in B", current.onlyB.length]
+    ["possible", "Possible", current.possible.length], ["onlyA", "Only in A", current.onlyA.length], ["onlyB", "Only in B", current.onlyB.length],
+    ["duplicatesA", "Duplicates in A", current.duplicatesA.length], ["duplicatesB", "Duplicates in B", current.duplicatesB.length]
   ];
   elements.summary.replaceChildren(...groups.map(([key, label, count]) => card(label, count, key)));
   elements.tabs.replaceChildren(...groups.map(([key, label, count]) => tab(label, count, key)));
   const items = current[activeGroup];
-  elements.rows.replaceChildren(...items.map(row));
+  const visible = activeGroup.startsWith("duplicates") ? items.map(item => ({
+    a: activeGroup === "duplicatesA" ? item.value : "", b: activeGroup === "duplicatesB" ? item.value : "",
+    kind: `${item.count} occurrences · lines ${item.lines.join(", ")}`
+  })) : items;
+  elements.rows.replaceChildren(...visible.map(row));
   elements.empty.hidden = items.length > 0;
 }
 
@@ -74,8 +81,7 @@ function card(label, count, key) {
 function tab(label, count, key) {
   const button = document.createElement("button");
   button.type = "button";
-  button.role = "tab";
-  button.setAttribute("aria-selected", String(key === activeGroup));
+  button.setAttribute("aria-pressed", String(key === activeGroup));
   button.textContent = `${label} (${count})`;
   button.addEventListener("click", () => { activeGroup = key; render(); });
   return button;

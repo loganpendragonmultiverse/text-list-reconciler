@@ -4,7 +4,7 @@ Text List Reconciler compares two arbitrary lists without sending them anywhere.
 
 ## Run it
 
-Open `index.html` in a modern browser, or use the hosted GitHub Pages version linked in the repository description. No build step, account, or server is required.
+Use the hosted GitHub Pages version linked in the repository description, or serve this folder locally with the command below. Browser module restrictions make direct `file:` opening unreliable. No build step or account is required.
 
 For local development with a stable module origin:
 
@@ -46,7 +46,7 @@ npm run check
 
 ## Project status
 
-**Feature complete for v1.1.** Accessibility, correctness, and import/export improvements are welcome when they preserve local-only operation.
+**Feature complete for v1.2.** Accessibility, correctness, and import/export improvements are welcome when they preserve local-only operation.
 
 Released under the [MIT License](LICENSE).
 
@@ -74,3 +74,16 @@ especially with near-match suggestions enabled. No content is uploaded or stored
 CSV report exports now prefix spreadsheet formula-like cells with an apostrophe. This
 changes only the exported report, not comparison values. Spreadsheet import behavior
 varies; inspect unfamiliar exports as text rather than treating CSV as safe executable input.
+
+## Version 1.2: complete reconciliation evidence
+
+Exact pairs are reserved across the complete lists before normalization. Plain-text values
+retain their original trailing whitespace; normalization controls affect matching only.
+Duplicate groups include occurrence counts and current source lines in the interface and
+CSV export. Changing a comparison option hides stale results until you compare again.
+
+Each editable input supports at most 1,048,576 JavaScript characters and 10,000 items. Near-match suggestions stop with an explicit error
+above 100,000 unmatched pairs or 2,000,000 edit-distance cells. No partial comparison is
+presented; disable near-matches and retry to retain exact, normalized and duplicate reports.
+These bounds keep the synchronous local tool suitable for smaller lists; it has no background
+worker or automatic fuzzy merges.

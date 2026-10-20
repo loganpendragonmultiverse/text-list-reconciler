@@ -36,3 +36,51 @@ test("CSV output escapes user values", () => {
   const csv = toCsv(reconcile('"quoted"', '"quoted"', {}));
   assert.match(csv, /"""quoted"""/);
 });
+
+
+test("all exact matches are reserved before normalized matches", () => {
+  const result = reconcile("ALPHA\nalpha", "alpha", { nearMatches: false });
+  assert.equal(result.exact[0].a, "alpha");
+  assert.equal(result.normalized.length, 0);
+  assert.equal(result.onlyA[0].a, "ALPHA");
+});
+
+test("plain input preserves trailing whitespace for exact evidence", () => {
+  assert.equal(parseList("alpha  ")[0].value, "alpha  ");
+  const result = reconcile("alpha  ", "alpha", { trimSpace: false, collapseSpace: false, nearMatches: false });
+  assert.equal(result.exact.length, 0);
+  assert.equal(result.normalized.length, 0);
+  assert.equal(result.onlyA[0].a, "alpha  ");
+});
+
+test("CSV exports duplicate groups and their source lines", () => {
+  const csv = toCsv(reconcile("=x\n=x", "z", { nearMatches: false }));
+  assert.match(csv, /duplicatesA,'=x,,1; 2,,,2/);
+});
+
+test("near-match budgets reject incomplete comparison clearly", () => {
+  const a = Array.from({length: 400}, (_, i) => `aaa${i}`).join("\n");
+  const b = Array.from({length: 400}, (_, i) => `bbb${i}`).join("\n");
+  assert.throws(() => reconcile(a, b), /Disable near-matches/);
+  assert.equal(reconcile(a, b, {nearMatches: false}).onlyA.length, 400);
+  assert.throws(() => reconcile("a".repeat(2000), "b".repeat(2000)), /work limit/);
+});
+
+test("punctuation-only normalized empties never become near matches", () => {
+  const result = reconcile("---", "!!!", {ignorePunctuation: true});
+  assert.equal(result.possible.length, 0);
+  assert.equal(result.onlyA.length, 1);
+});
+
+
+test("plain text handles CR line endings and input limits", () => {
+  assert.deepEqual(parseList("a\rb\r\nc").map(item => item.line), [1, 2, 3]);
+  assert.throws(() => parseList("a".repeat(1048577)), /characters/);
+  assert.throws(() => reconcile("x\n".repeat(10001), ""), /10,000 items/);
+});
+
+
+test("collapse spaces does not silently enable outer trimming", () => {
+  assert.equal(normalize("  alpha  ", {trimSpace: false, collapseSpace: true}), " alpha ");
+  assert.equal(normalize("alpha!", {ignorePunctuation: true}), "alpha");
+});
