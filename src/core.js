@@ -1,5 +1,6 @@
 export function parseList(text) {
-  return text.split(/\r?\n/).map((value, index) => ({ value: value.trimEnd(), line: index + 1 })).filter((item) => item.value.trim());
+  if (text.length > 1048576) throw new Error("List text exceeds 1,048,576 characters.");
+  return text.split(/\r\n|\r|\n/).map((value, index) => ({ value, line: index + 1 })).filter((item) => item.value.trim());
 }
 
 export function normalize(value, options = {}) {
@@ -16,6 +17,7 @@ export function reconcile(textA, textB, options = {}) {
 }
 
 export function reconcileItems(itemsA, itemsB, options = {}) {
+  if (itemsA.length > 10000 || itemsB.length > 10000) throw new Error("Compare at most 10,000 items per list.");
   const listA = itemsA.map((item, index) => ({ ...item, index, key: normalize(item.value, options) }));
   const listB = itemsB.map((item, index) => ({ ...item, index, key: normalize(item.value, options) }));
   const duplicatesA = duplicates(listA);
@@ -25,20 +27,29 @@ export function reconcileItems(itemsA, itemsB, options = {}) {
   const normalized = [];
   const onlyA = [];
 
+  // Reserve all exact pairs before normalization so early variants cannot steal them.
+  function queues(field) {
+    const groups = new Map();
+    for (const item of listB) {
+      if (!groups.has(item[field])) groups.set(item[field], []);
+      groups.get(item[field]).push(item);
+    }
+    return groups;
+  }
+  const exactQueues = queues("value");
+  const pendingA = [];
   for (const itemA of listA) {
-    let match = listB.find((itemB) => !usedB.has(itemB.index) && itemA.value === itemB.value);
-    if (match) {
-      usedB.add(match.index);
-      exact.push(pair(itemA, match, "Exact", 1));
-      continue;
-    }
-    match = listB.find((itemB) => !usedB.has(itemB.index) && itemA.key && itemA.key === itemB.key);
-    if (match) {
-      usedB.add(match.index);
-      normalized.push(pair(itemA, match, "Normalized", 1));
-      continue;
-    }
-    onlyA.push(itemA);
+    const match = exactQueues.get(itemA.value)?.shift();
+    if (match) { usedB.add(match.index); exact.push(pair(itemA, match, "Exact", 1)); }
+    else pendingA.push(itemA);
+  }
+  const normalizedQueues = queues("key");
+  for (const itemA of pendingA) {
+    const candidates = normalizedQueues.get(itemA.key);
+    while (candidates?.length && usedB.has(candidates[0].index)) candidates.shift();
+    const match = itemA.key ? candidates?.shift() : null;
+    if (match) { usedB.add(match.index); normalized.push(pair(itemA, match, "Normalized", 1)); }
+    else onlyA.push(itemA);
   }
 
   const unmatchedB = listB.filter((item) => !usedB.has(item.index));
@@ -46,8 +57,15 @@ export function reconcileItems(itemsA, itemsB, options = {}) {
   const matchedNearA = new Set();
   const matchedNearB = new Set();
   if (options.nearMatches !== false) {
+    if (onlyA.length * unmatchedB.length > 100000) throw new Error("Too many unmatched pairs for near-match suggestions. Disable near-matches and compare again.");
+    let remainingWork = 2000000;
     const candidates = [];
     onlyA.forEach((itemA, indexA) => unmatchedB.forEach((itemB, indexB) => {
+      if (!itemA.key || !itemB.key) return;
+      const threshold = nearThreshold(itemA.key, itemB.key);
+      if (Math.min(itemA.key.length, itemB.key.length) / Math.max(itemA.key.length, itemB.key.length) < threshold) return;
+      remainingWork -= itemA.key.length * itemB.key.length;
+      if (remainingWork < 0) throw new Error("Near-match work limit reached. Disable near-matches and compare again.");
       const score = similarity(itemA.key, itemB.key);
       if (score >= nearThreshold(itemA.key, itemB.key)) candidates.push({ indexA, indexB, score });
     }));
@@ -111,10 +129,14 @@ function levenshtein(a, b) {
 }
 
 export function toCsv(result) {
-  const rows = [["group", "list_a", "list_b", "line_a", "line_b", "similarity"]];
+  const rows = [["group", "list_a", "list_b", "line_a", "line_b", "similarity", "occurrence_count"]];
   for (const [group, items] of Object.entries(result)) {
-    if (!Array.isArray(items) || group.startsWith("duplicates")) continue;
-    items.forEach((item) => rows.push([group, item.a, item.b, item.lineA ?? "", item.lineB ?? "", item.score]));
+    if (!Array.isArray(items)) continue;
+    if (group.startsWith("duplicates")) {
+      items.forEach(item => rows.push([group, group === "duplicatesA" ? item.value : "", group === "duplicatesB" ? item.value : "", group === "duplicatesA" ? item.lines.join("; ") : "", group === "duplicatesB" ? item.lines.join("; ") : "", "", item.count]));
+      continue;
+    }
+    items.forEach((item) => rows.push([group, item.a, item.b, item.lineA ?? "", item.lineB ?? "", item.score, ""]));
   }
   return rows.map((row) => row.map(value => csvCell(value, true)).join(",")).join("\r\n") + "\r\n";
 }

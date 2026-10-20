@@ -108,10 +108,30 @@ try {
     assert.equal(await page.locator("#result-rows tr").count(), 1);
     assert.equal(await page.locator("#result-rows td").first().textContent(), "\uFEFFAlice");
   }
+  await page.locator("#reset").click();
+  await page.locator("#list-a").fill("ALPHA\nalpha\nalpha");
+  await page.locator("#list-b").fill("alpha");
+  await page.locator("#compare").click();
+  assert.match(await page.locator("#summary-grid").textContent(), /1Exact/);
+  await page.getByRole("button", {name: "Duplicates in A (1)", exact: true}).click();
+  assert.match(await page.locator("#result-rows").textContent(), /3 occurrences · lines 1, 2, 3/);
+  const duplicateDownload = page.waitForEvent("download");
+  await page.locator("#export").click();
+  await (await duplicateDownload).saveAs(path.join(root, ".qa/duplicates.csv"));
+  assert.match(await readFile(path.join(root, ".qa/duplicates.csv"), "utf8"), /duplicatesA/);
+  await page.locator("#ignore-case").uncheck();
+  assert.equal(await page.locator("#results").isVisible(), false);
+  await page.locator("#list-a").fill("a".repeat(2000));
+  await page.locator("#list-b").fill("b".repeat(2000));
+  await page.locator("#compare").click();
+  assert.match(await page.locator("#import-status").textContent(), /work limit/);
+  await page.locator("#near-matches").uncheck();
+  await page.locator("#compare").click();
+  assert.equal(await page.locator("#results").isVisible(), true);
   assert.equal(await page.evaluate(() => localStorage.length + sessionStorage.length), 0);
   assert.equal((await context.cookies()).length, 0);
   assert.deepEqual(errors, []); assert.deepEqual(remote, []);
-  const result = { status: "passed", checks: ["keyboard selection and Escape cancellation", "duplicate and blank header positions", "multiline cell comparison", "safe DOM preview/results", "CSV download", "both list panels", "malformed/oversized source preservation", "changed-list refusal", "mobile width and visible preview column", "control/table contrast", "U+FEFF first selected cell survives header/column import", "no external requests/storage/cookies"], errors, remote };
+  const result = { status: "passed", checks: ["keyboard selection and Escape cancellation", "duplicate and blank header positions", "multiline cell comparison", "safe DOM preview/results", "CSV download", "both list panels", "malformed/oversized source preservation", "changed-list refusal", "mobile width and visible preview column", "control/table contrast", "U+FEFF first selected cell survives header/column import", "duplicates visible and exported", "option changes invalidate stale reports", "near-match budget retry", "no external requests/storage/cookies"], errors, remote };
   await writeFile(path.join(root, ".qa/BROWSER-VERIFICATION.json"), JSON.stringify(result, null, 2));
   console.log(JSON.stringify(result));
 } finally { await context.close(); await browser.close(); await new Promise(resolve => server.close(resolve)); }

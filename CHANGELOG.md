@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.0 - 2026-10-20
+
+- Reserve exact matches before normalization and preserve original whitespace evidence.
+- Show duplicate groups and source lines in the interface and complete CSV exports.
+- Invalidate stale results when comparison options change.
+- Bound near-match work with an explicit retry path and retain unmatched punctuation-only items.
+
 ## 1.1.0 - 2026-10-15
 
 - Add bounded CSV parsing, explicit column/header selection and a cancellable local preview.
