@@ -31,6 +31,8 @@ async function openImport(side = "a", buffer = fixture, name = "data.csv") {
 async function waitDialog() { await page.locator("#csv-import").waitFor({ state: "visible" }); }
 try {
   await page.goto(origin);
+  assert.equal(await page.getByRole("textbox", {name: "Expected list items"}).count(), 1);
+  assert.equal(await page.getByRole("textbox", {name: "Observed list items"}).count(), 1);
   await page.locator("#list-a").fill("original");
   await page.locator("#list-b").fill("comparison");
   await openImport(); await waitDialog();
@@ -115,6 +117,8 @@ try {
   assert.match(await page.locator("#summary-grid").textContent(), /1Exact/);
   await page.getByRole("button", {name: "Duplicates in A (1)", exact: true}).click();
   assert.match(await page.locator("#result-rows").textContent(), /3 occurrences · lines 1, 2, 3/);
+  assert.equal(await page.locator("#tabs [aria-pressed=true]").count(), 1);
+  assert.equal(await page.locator("#tabs [aria-pressed=true]").evaluate(element => getComputedStyle(element).color), "rgb(99, 212, 197)");
   const duplicateDownload = page.waitForEvent("download");
   await page.locator("#export").click();
   await (await duplicateDownload).saveAs(path.join(root, ".qa/duplicates.csv"));

@@ -30,13 +30,13 @@
         <div class="list-panel">
           <div class="panel-heading"><div><span class="list-letter">A</span><h2>Expected list</h2></div><label class="file-button">Import file<input id="file-a" type="file" accept=".txt,.csv,text/plain,text/csv"></label></div>
           <label class="input-format" for="mode-a">Input format <select id="mode-a"><option value="lines">One item per line</option><option value="csv">CSV cells (one column)</option></select></label>
-          <textarea id="list-a" spellcheck="false" placeholder="One item per line&#10;Acme Corporation&#10;john@example.com&#10;Better-Proxies"></textarea>
+          <textarea id="list-a" aria-label="Expected list items" spellcheck="false" placeholder="One item per line&#10;Acme Corporation&#10;john@example.com&#10;Better-Proxies"></textarea>
           <p class="input-count" id="count-a">0 non-empty lines</p>
         </div>
         <div class="list-panel">
           <div class="panel-heading"><div><span class="list-letter">B</span><h2>Observed list</h2></div><label class="file-button">Import file<input id="file-b" type="file" accept=".txt,.csv,text/plain,text/csv"></label></div>
           <label class="input-format" for="mode-b">Input format <select id="mode-b"><option value="lines">One item per line</option><option value="csv">CSV cells (one column)</option></select></label>
-          <textarea id="list-b" spellcheck="false" placeholder="One item per line&#10;ACME Corp.&#10;John@example.com&#10;Better Proxies"></textarea>
+          <textarea id="list-b" aria-label="Observed list items" spellcheck="false" placeholder="One item per line&#10;ACME Corp.&#10;John@example.com&#10;Better Proxies"></textarea>
           <p class="input-count" id="count-b">0 non-empty lines</p>
         </div>
       </section>
