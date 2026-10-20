@@ -6,9 +6,10 @@ export function parseList(text) {
 export function normalize(value, options = {}) {
   let result = options.trimSpace === false ? value : value.trim();
   if (options.removeNumbering) result = result.replace(/^\s*(?:\d+[.)]|[-*•])\s+/, "");
-  if (options.ignoreCase !== false) result = result.toLocaleLowerCase();
+  if (options.ignoreCase !== false) result = result.toLowerCase();
   if (options.ignorePunctuation) result = result.replace(/[\p{P}\p{S}]/gu, " ");
-  if (options.collapseSpace !== false) result = result.replace(/\s+/g, " ").trim();
+  if (options.collapseSpace !== false) result = result.replace(/\s+/g, " ");
+  if (options.trimSpace !== false) result = result.trim();
   return result;
 }
 

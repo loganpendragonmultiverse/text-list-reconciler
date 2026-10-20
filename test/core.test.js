@@ -78,3 +78,9 @@ test("plain text handles CR line endings and input limits", () => {
   assert.throws(() => parseList("a".repeat(1048577)), /characters/);
   assert.throws(() => reconcile("x\n".repeat(10001), ""), /10,000 items/);
 });
+
+
+test("collapse spaces does not silently enable outer trimming", () => {
+  assert.equal(normalize("  alpha  ", {trimSpace: false, collapseSpace: true}), " alpha ");
+  assert.equal(normalize("alpha!", {ignorePunctuation: true}), "alpha");
+});
